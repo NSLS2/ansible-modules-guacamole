@@ -400,8 +400,8 @@ def main():
             except GuacamoleError as e:
                 module.fail_json(msg=str(e))
 
-            #if group_name == 'CSX_CTRL_USERS':
-            #    result['msg'] = existing_group_connection_ids
+            if group_name == 'CSX_CTRL_USERS':
+                result['msg'] = existing_group_connection_ids
 
             group_connection_ids = {connection['identifier'] for connection
                                   in guacamole_existing_connections if
