@@ -327,6 +327,16 @@ def main():
     except GuacamoleError as e:
         module.fail_json(msg=str(e))
 
+    try:
+        connections_groups = guacamole_get_connections_groups(
+            base_url=module.params.get('base_url'),
+            validate_certs=module.params.get('validate_certs'),
+            datasource=guacamole_token['dataSource'],
+            auth_token=guacamole_token['authToken'],
+        )
+    except GuacamoleError as e:
+        module.fail_json(msg=str(e))
+
     # Add user-groups and assign permisions for connections to the user-groups.
     if module.params.get('state') in {'present', 'sync'}:
         for group_name, connections in permissions.items():
