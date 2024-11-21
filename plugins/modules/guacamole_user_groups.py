@@ -402,12 +402,18 @@ def main():
             except GuacamoleError as e:
                 module.fail_json(msg=str(e))
 
-            #if group_name == 'CSX_CTRL_USERS':
-            #    result['msg'] = guacamole_existing_connections
+            if group_name == 'CSX_CTRL_USERS':
+                result['msg'] = guacamole_existing_connections
 
             group_connection_ids = {connection['identifier'] for connection
                                   in guacamole_existing_connections if
                                   connection['name'] in set(connections)} - existing_group_connection_ids
+
+            if group_name == 'CSX_CTRL_USERS':
+                result['msg'] = {connection['name'] for connection
+                                 in guacamole_existing_connections if
+                                 connection['name'] in set(connections)}
+
             for connection_id in group_connection_ids:
                 try:
                     guacamole_update_connections_in_group(
