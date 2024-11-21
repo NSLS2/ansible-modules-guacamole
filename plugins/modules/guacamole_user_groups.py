@@ -304,7 +304,7 @@ def main():
         state=dict(type='str', choices=['absent', 'present', 'sync'], default='present')
     )
 
-    result = dict(changed=True, msg='', users_group_info={})
+    result = dict(changed=False, msg='', users_group_info={})
 
     module = AnsibleModule(
         argument_spec=module_args,
@@ -400,8 +400,8 @@ def main():
             except GuacamoleError as e:
                 module.fail_json(msg=str(e))
 
-            if group_name == 'CSX_CTRL_USERS':
-                result['msg'] = existing_group_connection_ids
+            #if group_name == 'CSX_CTRL_USERS':
+            #    result['msg'] = existing_group_connection_ids
 
             group_connection_ids = {connection['identifier'] for connection
                                   in guacamole_existing_connections if
