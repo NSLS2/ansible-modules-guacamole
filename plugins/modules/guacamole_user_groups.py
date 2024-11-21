@@ -9,7 +9,7 @@ import json
 from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.urls import open_url
 from ansible_collections.scicore.guacamole.plugins.module_utils.guacamole import GuacamoleError, \
-    guacamole_get_token, guacamole_get_connections, guacamole_get_connections_groups
+    guacamole_get_token, guacamole_get_connections
 __metaclass__ = type
 
 ANSIBLE_METADATA = {
@@ -20,14 +20,14 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-module: guacamole_users_group
+module: guacamole_user_group
 
-short_description: Administer guacamole connections groups using the rest API
+short_description: Administer guacamole user-groups using the rest API.
 
 version_added: "2.9"
 
 description:
-    - "Add or remove guacamole connections groups."
+    - "Manage guacamole user-groups and assign connection permissions."
 
 options:
     base_url:
@@ -55,57 +55,66 @@ options:
         default: true
         type: bool
 
-    group_name:
+    permissions:
         description:
-            - Group name to create
-        required: true
-        type: str
-
-    users:
-        description:
-            - List of users in this group
-        type: list
+            - A dictionary that maps user-group names to connections.
+        type: dict
         elements: str
 
     state:
         description:
-            - Create or delete the users group
+            - Create, delete or sync the user-group.
+            - `sync` will make guacamole match the permissions dict, so it will add and remove.
         default: 'present'
         type: str
         choices:
             - present
             - absent
+            - sync
 
 author:
     - Pablo Escobar Lopez (@pescobar)
+    - Garrett Bischof (@gwbischof)
+    - Robert Schaffer (@RobertSchaffer1)
 '''
 
 EXAMPLES = '''
 
-- name: Create a new group "lab_3"
+- name: Create a new user-group "users1" with permissions for connections: "c1' and "c2"
   scicore.guacamole.guacamole_users_group:
     base_url: http://localhost/guacamole
     auth_username: guacadmin
     auth_password: guacadmin
-    group_name: lab_3
-    users:
-      - john
-      - laura
+    permissions: "{{ {'users1' : ['c1', 'c2']} }}"
+    state: present
 
-- name: Delete users group "developers"
+- name: Remove user-group "users1".
   scicore.guacamole.guacamole_users_group:
     base_url: http://localhost/guacamole
     auth_username: guacadmin
     auth_password: guacadmin
-    group_name: developers
+    permissions: "{{ {'users1' : []} }}"
     state: absent
+
+- name: Remove connection "c1" from user-group "users1".
+  scicore.guacamole.guacamole_users_group:
+    base_url: http://localhost/guacamole
+    auth_username: guacadmin
+    auth_password: guacadmin
+    permissions: "{{ {'users1' : ['c1']} }}"
+    state: absent
+
+- name: Sync user-groups and permissions. This will create groups and permissions defined
+    in the permissions dict, and delete anything not defined in the permissions.
+  scicore.guacamole.guacamole_users_group:
+    base_url: http://localhost/guacamole
+    auth_username: guacadmin
+    auth_password: guacadmin
+    permissions: "{{ {'users1' : ['c1', 'c2']} }}"
+    state: sync
 '''
 
 RETURN = '''
-group_info:
-    description: Information about the created or updated group
-    type: dict
-    returned: always
 message:
     description: Some extra info about what the module did
     type: str
@@ -117,8 +126,6 @@ URL_ADD_GROUP = URL_LIST_GROUPS
 URL_DELETE_GROUP = "{url}/api/session/data/{datasource}/userGroups/{group_name}?token={token}"
 URL_GET_GROUP_PERMISSIONS = "{url}/api/session/data/{datasource}/userGroups/{group_name}/permissions?token={token}"
 URL_UPDATE_CONNECTIONS_IN_GROUP = URL_GET_GROUP_PERMISSIONS
-URL_GET_GROUP_MEMBERS = "{url}/api/session/data/{datasource}/userGroups/{group_name}/memberUsers?token={token}"
-URL_UPDATE_USERS_IN_GROUP = URL_GET_GROUP_MEMBERS
 
 
 def guacamole_get_users_groups(base_url, validate_certs, datasource, auth_token):
@@ -132,7 +139,7 @@ def guacamole_get_users_groups(base_url, validate_certs, datasource, auth_token)
 
     try:
         users_groups = json.load(open_url(url_list_users_groups, method='GET',
-                                                validate_certs=validate_certs))
+                                          validate_certs=validate_certs))
     except ValueError as e:
         raise GuacamoleError(
             'API returned invalid JSON when trying to obtain users groups from %s: %s'
@@ -198,7 +205,7 @@ def guacamole_get_users_group_permissions(base_url, validate_certs, datasource, 
 
     try:
         group_permissions = json.load(open_url(url_get_users_group_permissions, method='GET',
-                                                validate_certs=validate_certs))
+                                               validate_certs=validate_certs))
     except ValueError as e:
         raise GuacamoleError(
             'API returned invalid JSON when trying to obtain group permissions from %s: %s'
@@ -208,33 +215,6 @@ def guacamole_get_users_group_permissions(base_url, validate_certs, datasource, 
                              % (url_get_users_group_permissions, str(e)))
 
     return group_permissions
-
-
-def guacamole_update_users_in_group(base_url, validate_certs, datasource, auth_token, group_name, user, action):
-    """
-    Add or remove a user to a group.
-    Action must be "add" or "remove"
-    """
-
-    if action not in ['add', 'remove']:
-        raise GuacamoleError("action must be 'add' or 'remove'")
-
-    url_update_users_in_group = URL_UPDATE_USERS_IN_GROUP.format(
-        url=base_url, datasource=datasource, token=auth_token, group_name=group_name)
-
-    payload = [{
-        "op": action,
-        "path": '/',
-        "value": user,
-    }]
-
-    try:
-        headers = {'Content-Type': 'application/json'}
-        open_url(url_update_users_in_group, method='PATCH', validate_certs=validate_certs, headers=headers,
-                 data=json.dumps(payload))
-    except Exception as e:
-        raise GuacamoleError('Could not update users for group %s in url %s. Error msg: %s'
-                             % (group_name, url_update_users_in_group, str(e)))
 
 
 def guacamole_update_connections_in_group(base_url, validate_certs, datasource, auth_token, group_name, connection_id, action):
@@ -322,6 +302,7 @@ def main():
     except GuacamoleError as e:
         module.fail_json(msg=str(e))
 
+    # Get the list of existing user-groups.
     try:
         groups_before = guacamole_get_users_groups(
             base_url=module.params.get('base_url'),
@@ -332,22 +313,9 @@ def main():
     except GuacamoleError as e:
         module.fail_json(msg=str(e))
 
-    #  module.fail_json(msg=guacamole_users_groups_before)
-
-    #  try:
-    #      group_permissions = guacamole_get_users_group_permissions(
-    #          base_url=module.params.get('base_url'),
-    #          validate_certs=module.params.get('validate_certs'),
-    #          datasource=guacamole_token['dataSource'],
-    #          auth_token=guacamole_token['authToken'],
-    #          group_name=module.params.get('group_name'),
-    #      )
-    #  except GuacamoleError as e:
-    #      module.fail_json(msg=str(e))
     permissions = module.params.get('permissions')
-    # module arg state=present so we have to create a new group
 
-    # Get a list of the existing connections.
+    # Get the list of the existing connections.
     try:
         guacamole_existing_connections = guacamole_get_connections(
             base_url=module.params.get('base_url'),
@@ -359,20 +327,11 @@ def main():
     except GuacamoleError as e:
         module.fail_json(msg=str(e))
 
-    try:
-        connections_groups = guacamole_get_connections_groups(
-            base_url=module.params.get('base_url'),
-            validate_certs=module.params.get('validate_certs'),
-            datasource=guacamole_token['dataSource'],
-            auth_token=guacamole_token['authToken'],
-        )
-    except GuacamoleError as e:
-        module.fail_json(msg=str(e))
-
+    # Add user-groups and assign permisions for connections to the user-groups.
     if module.params.get('state') in {'present', 'sync'}:
         for group_name, connections in permissions.items():
 
-            # If the group doesn't exists we add it.
+            # Add the user-group if it does not exist.
             if group_name not in groups_before:
                 try:
                     guacamole_add_group(
@@ -387,8 +346,7 @@ def main():
 
                 result['changed'] = True
 
-            # Add the connections to the user group permissions.
-            # Check the existing connections for the user group.
+            # Get the list of connections for the user-group.
             try:
                 existing_group_connection_ids = set(guacamole_get_users_group_permissions(
                     base_url=module.params.get('base_url'),
@@ -401,14 +359,10 @@ def main():
                 module.fail_json(msg=str(e))
 
             group_connection_ids = {connection['identifier'] for connection
-                                  in guacamole_existing_connections if
-                                  connection['name'] in set(connections)} - existing_group_connection_ids
+                                    in guacamole_existing_connections if connection['name']
+                                    in set(connections)} - existing_group_connection_ids
 
-            if group_name == 'CSX_CTRL_USERS':
-                result['msg'] = {connection['name'] for connection
-                                 in connections_groups.values() if
-                                 connection['name'] in set(connections)}
-
+            # Add connection permissions to the user-group.
             for connection_id in group_connection_ids:
                 try:
                     guacamole_update_connections_in_group(
@@ -423,10 +377,9 @@ def main():
                 except GuacamoleError as e:
                     module.fail_json(msg=str(e))
 
-
             group_connection_group_ids = {connection['identifier'] for connection
-                                  in connections_groups.values() if
-                                  connection['name'] in set(connections)} - existing_group_connection_ids
+                                  in connections_groups.values() if connection['name']
+                                  in set(connections)} - existing_group_connection_ids
             for connection_group in group_connection_group_ids:
                 try:
                     guacamole_update_connection_groups_in_group(
@@ -441,16 +394,17 @@ def main():
                 except GuacamoleError as e:
                     module.fail_json(msg=str(e))
 
+    # Remove user-groups and connection permisions.
     if module.params.get('state') in {'absent', 'sync'}:
 
-        # Determine which user groups should be deleted.
+        # Determine which user-groups should be deleted.
         if module.params.get('state') == 'absent':
             remove_groups = {group for group, connections in permissions.items()
                              if not connections}
         else:
             remove_groups = set(groups_before) - set(permissions.keys())
 
-        # Remove user groups.
+        # Remove user-groups.
         for remove_group in remove_groups:
             try:
                 guacamole_delete_group(
@@ -465,13 +419,14 @@ def main():
 
             result['changed'] = True
 
+        # Remove connection permissions from user-groups.
         for group_name, connections in permissions.items():
 
             connection_ids = {connection['identifier'] for connection
                               in guacamole_existing_connections if
                               connection['name'] in set(connections)}
 
-            # Determine which connections should be remove from group permissions.
+            # Determine which connections should be removed from group permissions.
             if module.params.get('state') == 'absent':
                 remove_connection_ids = connection_ids
             else:
@@ -483,6 +438,7 @@ def main():
                     group_name=group_name
                 )['connectionPermissions'].keys()) - connection_ids
 
+            # Remove connection permissions.
             for remove_connection_id in remove_connection_ids:
                 try:
                     guacamole_update_connections_in_group(
