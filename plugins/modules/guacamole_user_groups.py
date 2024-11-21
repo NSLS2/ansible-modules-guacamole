@@ -411,7 +411,7 @@ def main():
 
             if group_name == 'CSX_CTRL_USERS':
                 result['msg'] = {connection['name'] for connection
-                                 in guacamole_existing_connections if
+                                 in connections_groups if
                                  connection['name'] in set(connections)}
 
             for connection_id in group_connection_ids:
