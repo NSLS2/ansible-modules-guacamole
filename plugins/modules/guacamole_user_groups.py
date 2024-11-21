@@ -432,7 +432,7 @@ def main():
             group_connection_group_ids = {connection['identifier'] for connection
                                   in connections_groups.values() if
                                   connection['name'] in set(connections)} - existing_group_connection_ids
-            for connection_id in group_connection_group_ids:
+            for connection_group in group_connection_group_ids:
                 try:
                     guacamole_update_connection_groups_in_group(
                         base_url=module.params.get('base_url'),
@@ -440,7 +440,7 @@ def main():
                         datasource=guacamole_token['dataSource'],
                         auth_token=guacamole_token['authToken'],
                         group_name=group_name,
-                        connection_id=connection_id,
+                        connection_group=connection_group,
                         action='add',
                     )
                 except GuacamoleError as e:
