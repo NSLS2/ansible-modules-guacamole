@@ -401,13 +401,7 @@ def main():
                 module.fail_json(msg=str(e))
 
             if group_name == 'CSX_CTRL_USERS':
-                result['msg'] = guacamole_get_users_group_permissions(
-                     base_url=module.params.get('base_url'),
-                     validate_certs=module.params.get('validate_certs'),
-                     datasource=guacamole_token['dataSource'],
-                     auth_token=guacamole_token['authToken'],
-                     group_name=group_name
-                )
+                result['msg'] = guacamole_existing_connections
 
             group_connection_ids = {connection['identifier'] for connection
                                   in guacamole_existing_connections if
