@@ -409,10 +409,10 @@ def main():
                                   in guacamole_existing_connections if
                                   connection['name'] in set(connections)} - existing_group_connection_ids
 
-            #if group_name == 'CSX_CTRL_USERS':
-            #    result['msg'] = {connection['name'] for connection
-            #                     in connections_groups if
-            #                     connection['name'] in set(connections)}
+            if group_name == 'CSX_CTRL_USERS':
+                result['msg'] = {connection['name'] for connection
+                                 in connections_groups.values() if
+                                 connection['name'] in set(connections)}
 
             for connection_id in group_connection_ids:
                 try:
