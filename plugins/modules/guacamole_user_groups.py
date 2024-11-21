@@ -264,6 +264,33 @@ def guacamole_update_connections_in_group(base_url, validate_certs, datasource, 
                              % (group_name, url_update_connections_in_group, str(e)))
 
 
+def guacamole_update_connection_groups_in_group(base_url, validate_certs, datasource, auth_token, group_name, connection_group, action):
+    """
+    Add or remove a connection to a group.
+    Action must be "add" or "remove"
+    """
+
+    if action not in ['add', 'remove']:
+        raise GuacamoleError("action must be 'add' or 'remove'")
+
+    url_update_connections_in_group = URL_UPDATE_CONNECTIONS_IN_GROUP.format(
+        url=base_url, datasource=datasource, token=auth_token, group_name=group_name)
+
+    payload = [{
+        "op": action,
+        "path": '/connectionGroupPermissions/%s' % connection_group,
+        "value": 'READ'
+    }]
+
+    try:
+        headers = {'Content-Type': 'application/json'}
+        open_url(url_update_connections_in_group, method='PATCH', validate_certs=validate_certs, headers=headers,
+                 data=json.dumps(payload))
+    except Exception as e:
+        raise GuacamoleError('Could not update connections for group %s in url %s. Error msg: %s'
+                             % (group_name, url_update_connections_in_group, str(e)))
+
+
 def main():
 
     # define the available arguments/parameters that a user can pass to
@@ -277,7 +304,7 @@ def main():
         state=dict(type='str', choices=['absent', 'present', 'sync'], default='present')
     )
 
-    result = dict(changed=False, msg='', users_group_info={})
+    result = dict(changed=True, msg='', users_group_info={})
 
     module = AnsibleModule(
         argument_spec=module_args,
@@ -373,12 +400,33 @@ def main():
             except GuacamoleError as e:
                 module.fail_json(msg=str(e))
 
+            #if group_name == 'CSX_CTRL_USERS':
+            result['msg'] = existing_group_connection_ids
+
             group_connection_ids = {connection['identifier'] for connection
                                   in guacamole_existing_connections if
                                   connection['name'] in set(connections)} - existing_group_connection_ids
             for connection_id in group_connection_ids:
                 try:
                     guacamole_update_connections_in_group(
+                        base_url=module.params.get('base_url'),
+                        validate_certs=module.params.get('validate_certs'),
+                        datasource=guacamole_token['dataSource'],
+                        auth_token=guacamole_token['authToken'],
+                        group_name=group_name,
+                        connection_id=connection_id,
+                        action='add',
+                    )
+                except GuacamoleError as e:
+                    module.fail_json(msg=str(e))
+
+
+            group_connection_group_ids = {connection['identifier'] for connection
+                                  in connections_groups if
+                                  connection['name'] in set(connections)} - existing_group_connection_ids
+            for connection_id in group_connection_group_ids:
+                try:
+                    guacamole_update_connection_groups_in_group(
                         base_url=module.params.get('base_url'),
                         validate_certs=module.params.get('validate_certs'),
                         datasource=guacamole_token['dataSource'],
