@@ -369,8 +369,6 @@ def main():
     except GuacamoleError as e:
         module.fail_json(msg=str(e))
 
-    result['msg'] = connections_groups
-
     if module.params.get('state') in {'present', 'sync'}:
         for group_name, connections in permissions.items():
 
@@ -401,9 +399,6 @@ def main():
                 )['connectionPermissions'].keys())
             except GuacamoleError as e:
                 module.fail_json(msg=str(e))
-
-            #if group_name == 'CSX_CTRL_USERS':
-            #    result['msg'] = guacamole_existing_connections
 
             group_connection_ids = {connection['identifier'] for connection
                                   in guacamole_existing_connections if
