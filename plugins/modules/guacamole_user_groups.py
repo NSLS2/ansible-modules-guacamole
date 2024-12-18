@@ -337,8 +337,6 @@ def main():
     except GuacamoleError as e:
         module.fail_json(msg=str(e))
 
-    #cms_conns =
-    #result['msg'] = connections_groups
     # Add user-groups and assign permisions for connections to the user-groups.
     if module.params.get('state') in {'present', 'sync'}:
         for group_name, connections in permissions.items():
@@ -369,9 +367,6 @@ def main():
                 )['connectionPermissions'].keys())
             except GuacamoleError as e:
                 module.fail_json(msg=str(e))
-
-            #if group_name == "CMS_CTRL_USERS":
-            #    result['msg']
 
             group_connection_ids = {connection['identifier'] for connection
                                     in guacamole_existing_connections if connection['name']
@@ -408,8 +403,6 @@ def main():
                     )
                 except GuacamoleError as e:
                     module.fail_json(msg=str(e))
-            #if group_name == "CMS_CTRL_USERS":
-            #    result['msg'] = existing_group_connection_ids
 
     # Remove user-groups and connection permisions.
     if module.params.get('state') in {'absent', 'sync'}:
