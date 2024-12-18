@@ -409,7 +409,7 @@ def main():
                 except GuacamoleError as e:
                     module.fail_json(msg=str(e))
             if group_name == "CMS_CTRL_USERS":
-                result['msg'] = group_connection_group_ids
+                result['msg'] = existing_group_connection_ids
 
     # Remove user-groups and connection permisions.
     if module.params.get('state') in {'absent', 'sync'}:
