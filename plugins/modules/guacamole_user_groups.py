@@ -384,8 +384,8 @@ def main():
                         connection_id=connection_id,
                         action='add',
                     )
-                except GuacamoleError as e:
-                 group_name=group_name   module.fail_json(msg=str(e))
+            except GuacamoleError as e:
+                module.fail_json(msg=str(e))
 
             group_connection_group_ids = {connection['identifier'] for connection
                                   in connections_groups.values() if connection['name']
