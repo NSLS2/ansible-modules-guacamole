@@ -390,11 +390,11 @@ def main():
                         action='add',
                     )
                 except GuacamoleError as e:
-                    module.fail_json(msg=str(e))
+                 group_name=group_name   module.fail_json(msg=str(e))
 
             group_connection_group_ids = {connection['identifier'] for connection
                                   in connections_groups.values() if connection['name']
-                                  in set(connections)} - existing_group_connection_ids
+                                  in set(connections)}
             for connection_group in group_connection_group_ids:
                 try:
                     guacamole_update_connection_groups_in_group(
@@ -408,8 +408,8 @@ def main():
                     )
                 except GuacamoleError as e:
                     module.fail_json(msg=str(e))
-            if group_name == "CMS_CTRL_USERS":
-                result['msg'] = existing_group_connection_ids
+            #if group_name == "CMS_CTRL_USERS":
+            #    result['msg'] = existing_group_connection_ids
 
     # Remove user-groups and connection permisions.
     if module.params.get('state') in {'absent', 'sync'}:
